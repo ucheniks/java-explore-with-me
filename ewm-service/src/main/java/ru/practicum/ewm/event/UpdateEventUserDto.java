@@ -1,0 +1,52 @@
+package ru.practicum.ewm.event;
+
+import com.fasterxml.jackson.annotation.JsonFormat;
+import jakarta.validation.constraints.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.RequiredArgsConstructor;
+
+
+import java.time.LocalDateTime;
+
+
+@Data
+@Builder
+@AllArgsConstructor
+@RequiredArgsConstructor
+public class UpdateEventUserDto {
+
+    @Size(max = 2000, message = "Аннотация может содержать не более 2000 символов")
+    private String annotation;
+
+    @Positive(message = "ID категории должен быть положительным числом")
+    private Long category;
+
+    @Size(max = 7000, message = "Описание может содержать не более 7000 символов")
+    private String description;
+
+    @Future(message = "Дата события должна быть в будущем")
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    private LocalDateTime eventDate;
+
+    private Location location;
+
+    private Boolean paid;
+
+    @PositiveOrZero(message = "Лимит участников не может быть отрицательным")
+    private Long participantLimit;
+
+    private Boolean requestModeration;
+
+    private StateAction stateAction;
+
+    @Size(max = 120, message = "Описание может содержать не более 120 символов")
+    private String title;
+
+
+    public enum StateAction {
+        SEND_TO_REVIEW,
+        CANCEL_REVIEW
+    }
+}
