@@ -5,6 +5,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import ru.practicum.ewm.exception.ConflictException;
 import ru.practicum.ewm.exception.NotFoundException;
 
 import java.util.List;
@@ -26,6 +27,10 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional
     public UserResponseDto addUserAdmin(NewUserDto userDto) {
+        if (userRepository.existsByEmail(userDto.getEmail())) {
+            throw new ConflictException("User with email " + userDto.getEmail() + " already exists");
+        }
+
         User user = UserMapper.toUser(userDto);
         User savedUser = userRepository.save(user);
         return UserMapper.toResponseDto(savedUser);

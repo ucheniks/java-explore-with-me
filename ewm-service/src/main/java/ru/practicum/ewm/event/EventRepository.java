@@ -14,15 +14,16 @@ public interface EventRepository extends JpaRepository<Event, Long> {
 
     @Query("SELECT e FROM Event e " +
             "WHERE e.state = 'PUBLISHED' " +
-            "AND (:text IS NULL OR LOWER(e.annotation) LIKE LOWER(CONCAT('%', :text, '%')) " +
-            "OR LOWER(e.description) LIKE LOWER(CONCAT('%', :text, '%'))) " +
+            "AND (:text IS NULL OR " +
+            "   (LOWER(CAST(e.annotation AS string)) LIKE LOWER(CONCAT('%', CAST(:text AS string), '%')) " +
+            "   OR LOWER(CAST(e.description AS string)) LIKE LOWER(CONCAT('%', CAST(:text AS string), '%')))) " +
             "AND (:categories IS NULL OR e.category.id IN :categories) " +
             "AND (:paid IS NULL OR e.paid = :paid) " +
-            "AND (:rangeStart IS NULL OR e.eventDate >= :rangeStart) " +
-            "AND (:rangeEnd IS NULL OR e.eventDate <= :rangeEnd) " +
+            "AND (CAST(:rangeStart AS timestamp) IS NULL OR e.eventDate >= :rangeStart) " +
+            "AND (CAST(:rangeEnd AS timestamp) IS NULL OR e.eventDate <= :rangeEnd) " +
             "AND (:onlyAvailable = false OR " +
-            "(SELECT COUNT(r) FROM Request r WHERE r.event = e AND r.status = 'CONFIRMED') < e.participantLimit " +
-            "OR e.participantLimit = 0)")
+            "   (SELECT COUNT(r) FROM Request r WHERE r.event = e AND r.status = 'CONFIRMED') < e.participantLimit " +
+            "   OR e.participantLimit = 0)")
     Page<Event> getEventsPublic(
             @Param("text") String text,
             @Param("categories") List<Long> categories,
@@ -41,8 +42,8 @@ public interface EventRepository extends JpaRepository<Event, Long> {
             "WHERE (:users IS NULL OR e.initiator.id IN :users) " +
             "AND (:states IS NULL OR e.state IN :states) " +
             "AND (:categories IS NULL OR e.category.id IN :categories) " +
-            "AND (:rangeStart IS NULL OR e.eventDate >= :rangeStart) " +
-            "AND (:rangeEnd IS NULL OR e.eventDate <= :rangeEnd)")
+            "AND (CAST(:rangeStart AS timestamp) IS NULL OR e.eventDate >= :rangeStart) " +
+            "AND (CAST(:rangeEnd AS timestamp) IS NULL OR e.eventDate <= :rangeEnd) ")
     Page<Event> getEventsByAdmin(
             @Param("users") List<Long> users,
             @Param("states") List<Event.EventState> states,

@@ -16,7 +16,7 @@ import java.time.LocalDateTime;
 public class NewEventDto {
 
     @NotBlank(message = "Аннотация не может быть пустой")
-    @Size(max = 2000, message = "Аннотация может содержать не более 2000 символов")
+    @Size(min = 20, max = 2000, message = "Аннотация должна содержать от 20 до 2000 символов")
     private String annotation;
 
     @NotNull(message = "Категория обязательна")
@@ -24,7 +24,7 @@ public class NewEventDto {
     private Long category;
 
     @NotBlank(message = "Описание не может быть пустым")
-    @Size(max = 7000, message = "Описание может содержать не более 7000 символов")
+    @Size(min = 20, max = 7000, message = "Описание должно содержать от 20 до 7000 символов")
     private String description;
 
     @NotNull(message = "Дата события обязательна")
@@ -46,6 +46,6 @@ public class NewEventDto {
     private Boolean requestModeration = true;
 
     @NotBlank(message = "Заголовок не может быть пустым")
-    @Size(max = 120, message = "Описание может содержать не более 120 символов")
+    @Size(min = 3, max = 120, message = "Заголовок должен содержать от 3 до 120 символов")
     private String title;
 }

@@ -6,6 +6,7 @@ import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.PositiveOrZero;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 import ru.practicum.ewm.request.RequestResponseDto;
 
@@ -19,6 +20,7 @@ public class EventControllerPrivate {
     private final EventService eventService;
 
     @PostMapping
+    @ResponseStatus(HttpStatus.CREATED)
     public EventFullResponseDto createEvent(
             @PathVariable Long userId,
             @RequestBody @Valid NewEventDto eventDto) {

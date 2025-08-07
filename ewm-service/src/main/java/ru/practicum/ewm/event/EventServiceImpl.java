@@ -49,13 +49,21 @@ public class EventServiceImpl implements EventService {
     @Transactional
     public EventFullResponseDto updateEventAdmin(Long eventId, UpdateEventAdminDto updateDto) {
         Event event = getAndValidateEventForAdminUpdate(eventId, updateDto);
+
+        if (updateDto.getStateAction() == UpdateEventAdminDto.StateAction.REJECT_EVENT) {
+            if (event.getState() != Event.EventState.PENDING) {
+                throw new ConflictException("Cannot reject event that is not in PENDING state");
+            }
+            event.setState(Event.EventState.CANCELED);
+        }
+
         updateEventFieldsByAdmin(event, updateDto);
 
         Event updatedEvent = eventRepository.save(event);
 
         Long confirmedRequests = requestRepository.countByEventIdAndStatus(
                 eventId, Request.Status.CONFIRMED);
-        Long views = getViewsForEvent(eventId);
+        Long views = getViewsForEvent(event);
 
         return EventMapper.toFullResponseDto(updatedEvent, confirmedRequests, views);
     }
@@ -117,7 +125,7 @@ public class EventServiceImpl implements EventService {
                 .map(event1 -> {
                     Long confirmedRequests = requestRepository.countByEventIdAndStatus(
                             event1.getId(), Request.Status.CONFIRMED);
-                    Long views = getViewsForEvent(event1.getId());
+                    Long views = getViewsForEvent(event1);
                     return EventMapper.toFullResponseDto(event1, confirmedRequests, views);
                 })
                 .orElseThrow(() -> new NotFoundException("Event was not found: " + eventId));
@@ -155,13 +163,18 @@ public class EventServiceImpl implements EventService {
     public EventFullResponseDto updateEventPrivate(Long userId, Long eventId, UpdateEventUserDto updateDto) {
         Event oldEvent = getAndValidateEventBeforeUpdate(userId, eventId, updateDto);
 
+        if (oldEvent.getState() == Event.EventState.CANCELED &&
+                updateDto.getStateAction() == UpdateEventUserDto.StateAction.SEND_TO_REVIEW) {
+            oldEvent.setState(Event.EventState.PENDING);
+        }
+
         updateEventFields(oldEvent, updateDto);
 
         Event updatedEvent = eventRepository.save(oldEvent);
 
         Long confirmedRequests = requestRepository.countByEventIdAndStatus(
                 eventId, Request.Status.CONFIRMED);
-        Long views = getViewsForEvent(eventId);
+        Long views = getViewsForEvent(updatedEvent);
 
         return EventMapper.toFullResponseDto(updatedEvent, confirmedRequests, views);
     }
@@ -172,7 +185,7 @@ public class EventServiceImpl implements EventService {
             throw new NotFoundException("User was not found " + userId);
         }
 
-        Event event = eventRepository.findById(userId)
+        Event event = eventRepository.findById(eventId)
                 .orElseThrow(() -> new NotFoundException("Event was not found: " + eventId));
 
         if (!event.getInitiator().getId().equals(userId)) {
@@ -196,7 +209,7 @@ public class EventServiceImpl implements EventService {
             throw new NotFoundException("User was not found " + userId);
         }
 
-        Event event = eventRepository.findById(userId)
+        Event event = eventRepository.findById(eventId)
                 .orElseThrow(() -> new NotFoundException("Event was not found: " + eventId));
 
         if (!event.getInitiator().getId().equals(userId)) {
@@ -236,6 +249,20 @@ public class EventServiceImpl implements EventService {
             LocalDateTime rangeEnd, Boolean onlyAvailable, String sort,
             Integer from, Integer size, HttpServletRequest request) {
 
+
+        statsClient.save(new RequestEndpointHitDto(
+                app,
+                request.getRequestURI(),
+                request.getRemoteAddr(),
+                LocalDateTime.now()
+        ));
+
+        try {
+            Thread.sleep(400);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+
         if (rangeStart == null && rangeEnd == null) {
             rangeStart = LocalDateTime.now();
         }
@@ -251,7 +278,7 @@ public class EventServiceImpl implements EventService {
         Map<Long, Long> confirmedRequests = getConfirmedRequestsCounts(eventIds);
         Map<Long, Long> views = getViewsForEvents(eventIds);
 
-        List<EventShortResponseDto> eventsResponse = events.stream()
+        return events.stream()
                 .map(event -> EventMapper.toShortResponseDto(
                         event,
                         confirmedRequests.getOrDefault(event.getId(), 0L),
@@ -259,36 +286,31 @@ public class EventServiceImpl implements EventService {
                 ))
                 .sorted(getComparator(sort))
                 .toList();
-
-        statsClient.saveHit(new RequestEndpointHitDto(
-                app,
-                request.getRequestURI(),
-                request.getRemoteAddr(),
-                LocalDateTime.now()
-        ));
-
-        return eventsResponse;
     }
 
     @Override
     public EventFullResponseDto getFullEventByIdPublic(Long eventId, HttpServletRequest request) {
-        EventFullResponseDto eventDto = eventRepository.findPublishedEventById(eventId)
-                .map(event1 -> {
-                    Long confirmedRequests = requestRepository.countByEventIdAndStatus(
-                            event1.getId(), Request.Status.CONFIRMED);
-                    Long views = getViewsForEvent(event1.getId());
-                    return EventMapper.toFullResponseDto(event1, confirmedRequests, views);
-                })
-                .orElseThrow(() -> new NotFoundException("Event was not found: " + eventId));
-
-        statsClient.saveHit(new RequestEndpointHitDto(
+        statsClient.save(new RequestEndpointHitDto(
                 app,
                 request.getRequestURI(),
                 request.getRemoteAddr(),
                 LocalDateTime.now()
         ));
 
-        return eventDto;
+        try {
+            Thread.sleep(400);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+
+        return eventRepository.findPublishedEventById(eventId)
+                .map(event1 -> {
+                    Long confirmedRequests = requestRepository.countByEventIdAndStatus(
+                            event1.getId(), Request.Status.CONFIRMED);
+                    Long views = getViewsForEvent(event1);
+                    return EventMapper.toFullResponseDto(event1, confirmedRequests, views);
+                })
+                .orElseThrow(() -> new NotFoundException("Event was not found: " + eventId));
     }
 
 
@@ -311,6 +333,9 @@ public class EventServiceImpl implements EventService {
                 .orElseThrow(() -> new NotFoundException("Event not found: " + eventId));
 
         if (updateDto.getStateAction() == UpdateEventAdminDto.StateAction.PUBLISH_EVENT) {
+            if (event.getState() != Event.EventState.PENDING) {
+                throw new ConflictException("Cannot publish event that is not in PENDING state");
+            }
             if (updateDto.getEventDate() != null &&
                     updateDto.getEventDate().isBefore(LocalDateTime.now().plusHours(1))) {
                 throw new ConflictException("Event date must be at least 1 hour after publication");
@@ -373,6 +398,11 @@ public class EventServiceImpl implements EventService {
 
 
     private void validationEventDate(LocalDateTime eventDate) {
+        log.info("Validating event date: {}, current time: {}", eventDate, LocalDateTime.now());
+
+        if (eventDate == null) {
+            throw new EventCreateException("Event date cannot be null");
+        }
         if (eventDate.isBefore(LocalDateTime.now().plusHours(2))) {
             throw new EventCreateException("The event date cannot be earlier than two hours from the current moment");
         }
@@ -383,7 +413,7 @@ public class EventServiceImpl implements EventService {
             throw new NotFoundException("User was not found " + userId);
         }
 
-        Event event = eventRepository.findById(userId)
+        Event event = eventRepository.findById(eventId)
                 .orElseThrow(() -> new NotFoundException("Event was not found: " + eventId));
 
         if (!event.getInitiator().getId().equals(userId)) {
@@ -391,10 +421,12 @@ public class EventServiceImpl implements EventService {
         }
 
         if (event.getState() != Event.EventState.PENDING && event.getState() != Event.EventState.CANCELED) {
-            throw new EventCreateException("Only pending or canceled events can be changed");
+            throw new ConflictException("Only pending or canceled events can be changed");
         }
 
-        validationEventDate(updateDto.getEventDate());
+        if (updateDto.getEventDate() != null) {
+            validationEventDate(updateDto.getEventDate());
+        }
 
         return event;
     }
@@ -514,24 +546,28 @@ public class EventServiceImpl implements EventService {
         }
     }
 
-    private Long getViewsForEvent(Long eventId) {
-        ResponseEntity<Object> response = statsClient.getStats(
-                LocalDateTime.now().minusYears(100),
-                LocalDateTime.now(),
-                List.of("/events/" + eventId),
-                true
-        );
+    private Long getViewsForEvent(Event event) {
+        final String eventUri = "/events/" + event.getId();
 
-        ObjectMapper mapper = new ObjectMapper();
         try {
+            ResponseEntity<Object> response = statsClient.getStats(
+                    event.getPublished() != null ? event.getPublished() : LocalDateTime.now().minusYears(100),
+                    LocalDateTime.now(),
+                    List.of(eventUri),
+                    true
+            );
+
+            ObjectMapper mapper = new ObjectMapper();
             List<ResponseViewStatsDto> stats = mapper.convertValue(
                     response.getBody(),
                     new TypeReference<>() {
                     }
             );
-            return stats.isEmpty() ? 0 : stats.getFirst().getHits();
+
+            return stats.isEmpty() ? 0L : stats.get(0).getHits();
         } catch (Exception e) {
-            throw new StatsClientException("Failed to get stats " + e.getMessage());
+            log.error("Failed to get stats for event {}: {}", event.getId(), e.getMessage());
+            return 0L;
         }
     }
 

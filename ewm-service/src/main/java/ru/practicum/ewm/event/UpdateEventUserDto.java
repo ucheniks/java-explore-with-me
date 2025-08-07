@@ -17,13 +17,13 @@ import java.time.LocalDateTime;
 @RequiredArgsConstructor
 public class UpdateEventUserDto {
 
-    @Size(max = 2000, message = "Аннотация может содержать не более 2000 символов")
+    @Size(min = 20, max = 2000, message = "Аннотация должна содержать от 20 до 2000 символов")
     private String annotation;
 
     @Positive(message = "ID категории должен быть положительным числом")
     private Long category;
 
-    @Size(max = 7000, message = "Описание может содержать не более 7000 символов")
+    @Size(min = 20, max = 7000, message = "Описание должно содержать от 20 до 7000 символов")
     private String description;
 
     @Future(message = "Дата события должна быть в будущем")
@@ -41,9 +41,8 @@ public class UpdateEventUserDto {
 
     private StateAction stateAction;
 
-    @Size(max = 120, message = "Описание может содержать не более 120 символов")
+    @Size(min = 3, max = 120, message = "Заголовок должен содержать от 3 до 120 символов")
     private String title;
-
 
     public enum StateAction {
         SEND_TO_REVIEW,

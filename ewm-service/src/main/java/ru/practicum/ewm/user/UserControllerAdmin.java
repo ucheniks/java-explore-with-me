@@ -1,6 +1,7 @@
 package ru.practicum.ewm.user;
 
 
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.PositiveOrZero;
 import lombok.RequiredArgsConstructor;
@@ -18,8 +19,9 @@ public class UserControllerAdmin {
     private final UserService userService;
 
     @PostMapping
+    @ResponseStatus(HttpStatus.CREATED)
     public UserResponseDto addUser(
-            @RequestBody NewUserDto userDto) {
+            @RequestBody @Valid NewUserDto userDto) {
         log.info("Add user {}", userDto);
         return userService.addUserAdmin(userDto);
     }

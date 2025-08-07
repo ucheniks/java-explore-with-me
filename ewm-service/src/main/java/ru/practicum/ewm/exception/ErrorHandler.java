@@ -3,6 +3,7 @@ package ru.practicum.ewm.exception;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingRequestHeaderException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -31,9 +32,9 @@ public class ErrorHandler {
         );
     }
 
-    @ExceptionHandler({ConflictException.class, EventCreateException.class})
+    @ExceptionHandler({ConflictException.class})
     @ResponseStatus(HttpStatus.CONFLICT)
-    public ApiError handleConflictException(final RuntimeException e) {
+    public ApiError handleConflictException(final ConflictException e) {
         return buildApiError(
                 e.getMessage(),
                 "For the requested operation the conditions are not met.",
@@ -42,9 +43,9 @@ public class ErrorHandler {
         );
     }
 
-    @ExceptionHandler({StatsClientException.class})
+    @ExceptionHandler({StatsClientException.class, EventCreateException.class})
     @ResponseStatus(HttpStatus.BAD_REQUEST)
-    public ApiError handleStatsClientException(final StatsClientException e) {
+    public ApiError handleStatsClientException(final RuntimeException e) {
         return buildApiError(
                 e.getMessage(),
                 "Incorrectly made request.",
@@ -76,6 +77,17 @@ public class ErrorHandler {
                 "Incorrectly made request.",
                 HttpStatus.BAD_REQUEST,
                 Collections.singletonList("Отсутствует обязательный заголовок: " + e.getHeaderName())
+        );
+    }
+
+    @ExceptionHandler(MissingServletRequestParameterException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ApiError handleMissingParams(MissingServletRequestParameterException e) {
+        return buildApiError(
+                "Required parameter '" + e.getParameterName() + "' is missing",
+                "Incorrectly made request",
+                HttpStatus.BAD_REQUEST,
+                Collections.singletonList(e.getMessage())
         );
     }
 
