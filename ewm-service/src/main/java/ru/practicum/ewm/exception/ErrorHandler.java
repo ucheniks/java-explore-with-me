@@ -1,4 +1,4 @@
-package ru.practicum.exception;
+package ru.practicum.ewm.exception;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -32,9 +32,20 @@ public class ErrorHandler {
         );
     }
 
-    @ExceptionHandler({InvalidDateRangeException.class})
+    @ExceptionHandler({ConflictException.class})
+    @ResponseStatus(HttpStatus.CONFLICT)
+    public ApiError handleConflictException(final ConflictException e) {
+        return buildApiError(
+                e.getMessage(),
+                "For the requested operation the conditions are not met.",
+                HttpStatus.CONFLICT,
+                Collections.singletonList(e.getMessage())
+        );
+    }
+
+    @ExceptionHandler({StatsClientException.class, EventCreateException.class})
     @ResponseStatus(HttpStatus.BAD_REQUEST)
-    public ApiError handleInvalidDateRangeException(final InvalidDateRangeException e) {
+    public ApiError handleStatsClientException(final RuntimeException e) {
         return buildApiError(
                 e.getMessage(),
                 "Incorrectly made request.",
@@ -42,7 +53,6 @@ public class ErrorHandler {
                 Collections.singletonList(e.getMessage())
         );
     }
-
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
@@ -59,17 +69,6 @@ public class ErrorHandler {
         );
     }
 
-    @ExceptionHandler(MissingServletRequestParameterException.class)
-    @ResponseStatus(HttpStatus.BAD_REQUEST)
-    public ApiError handleMissingParams(MissingServletRequestParameterException e) {
-        return buildApiError(
-                "Required parameter '" + e.getParameterName() + "' is missing",
-                "Incorrectly made request",
-                HttpStatus.BAD_REQUEST,
-                Collections.singletonList(e.getMessage())
-        );
-    }
-
     @ExceptionHandler(MissingRequestHeaderException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public ApiError handleMissingHeader(final MissingRequestHeaderException e) {
@@ -78,6 +77,17 @@ public class ErrorHandler {
                 "Incorrectly made request.",
                 HttpStatus.BAD_REQUEST,
                 Collections.singletonList("Отсутствует обязательный заголовок: " + e.getHeaderName())
+        );
+    }
+
+    @ExceptionHandler(MissingServletRequestParameterException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ApiError handleMissingParams(MissingServletRequestParameterException e) {
+        return buildApiError(
+                "Required parameter '" + e.getParameterName() + "' is missing",
+                "Incorrectly made request",
+                HttpStatus.BAD_REQUEST,
+                Collections.singletonList(e.getMessage())
         );
     }
 
