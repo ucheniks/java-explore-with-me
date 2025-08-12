@@ -3,6 +3,7 @@ package ru.practicum.ewm.request;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -11,6 +12,7 @@ import java.util.List;
 @RequiredArgsConstructor
 @Slf4j
 @RequestMapping("/users/{userId}/requests")
+@Validated
 public class RequestControllerPrivate {
     private final RequestService requestService;
 
